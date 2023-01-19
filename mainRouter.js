@@ -8,6 +8,7 @@
      authRoutes,
      analisisRoutes,
      uploadRoutes,
+     filtroRoutes
  } = require("./routes");
  
  const router = Router();
@@ -15,5 +16,6 @@
  router.use("/auth", authRoutes);
  router.use("/analyze", analisisRoutes);
  router.use("/upload", uploadRoutes);
+ router.use("/filtro", filtroRoutes);
  
  module.exports = router;

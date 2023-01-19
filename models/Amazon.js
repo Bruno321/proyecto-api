@@ -2,8 +2,8 @@ const Sequelize = require('sequelize')
 const { db } = require('../config/')
 
 const Amazon = db.define('amazon',{
-    date:Sequelize.DATEONLY,
-    price:Sequelize.INTEGER
+    date:Sequelize.STRING,
+    price:Sequelize.DOUBLE
 })
 
 

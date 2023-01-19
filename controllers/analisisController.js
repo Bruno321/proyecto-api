@@ -1,31 +1,73 @@
-const {Bitcoin} = require("../models")
-const {Amazon} = require("../models")
+const {Bitcoin,Amazon} = require("../models")
 
 exports.analyze = async (req,res,next) => {
     try {
-        const {value} = req.body
+        const {value,k,j,m,a} = req.body
         //base de datos a consultar,k,j,alfa
         //pronostico a 1 
-        const information = {
-            price:[20977.48,19910.54,18868.91,18117.59,17446.36,17192.95,17093.99,16954.15,16952.12,16836.47]
-        }
-        // if(value==="bitcoin"){
-        //     information = await Bitcoin.findAll()
-        // }else if(value==="amazon"){
-        //     information = await Amazon.findAll()
+        // const information = {
+        //     price:[20977.48,19910.54,18868.91,18117.59,17446.36,17192.95,17093.99,16954.15,16952.12,16836.47]
         // }
+        let information
+        if(value===0){
+            information = await Bitcoin.findAll()
+        }else if(value===1){
+            information = await Amazon.findAll()
+        }
 
-        const psData = promedioSimple(information.price)
-        const pmsData = promedioMovilSimple(information.price,2)
-        const pmdData = promedioMovilDoble(information.price,pmsData.pmd,2,3)
-        const pmdaData = promedioMovilDobleAjustado(information.price,pmdData.pmd,pmsData.pmd,2,3)
-        const ptmacData = promedioTmac(information.price);
+        let valueNom = [
+            "Bitcoin",
+            "Amazon"
+        ]
+        let prices = []
+        let dates = []
+
+        information.map(e=>{
+            prices.push(e.dataValues.price)
+            dates.push(e.dataValues.date)
+        })
+
+
+        const psData = promedioSimple(prices)
+        const pmsData = promedioMovilSimple(prices,k)
+        const pmdData = promedioMovilDoble(prices,pmsData.pmd,k,j)
+        const pmdaData = promedioMovilDobleAjustado(prices,pmdData.pmd,pmsData.pmd,k,j)
+        const ptmacData = promedioTmac(prices);
+
+        const erroresMedios = [
+            psData.errorMedio,
+            pmsData.errorMedio,
+            pmdData.errorMedio,
+            pmdaData.errorMedio,
+            ptmacData.errorMedio,
+        ]
+
+        const bestOptionNum = Math.max(...erroresMedios)
+
+        let iV 
+        erroresMedios.forEach((e,i)=>{
+            if(e===bestOptionNum){
+                iV = i
+            }
+        })
+        let date_ob = new Date();
+
+        const operacionesRealizadas = `
+        El ${date_ob.getDate()} del mes ${date_ob.getMonth()} del año ${date_ob.getFullYear()} a las ${date_ob.getHours()}:${date_ob.getMinutes}
+        el administrador realizo las siguientes operaciones de analisis sobre ${valueNom[value]}:
+         "Promedio Movil simple ", "Promedio Movil Doble" , "Promedio Movil Doble Ajustado" , "Promedio simple" , "tmac" 
+         asi como sus respectivos errores medios,relativos y cuadraticos
+        `
+
         return res.status(200).json({
             psData,
             pmsData,
             pmdData,
             pmdaData,
-            ptmacData
+            ptmacData,
+            prices,
+            dates,
+            iV
         })
     } catch(e){
         console.log(e)
@@ -154,23 +196,22 @@ function promedioMovilDobleAjustado(data,pmdData,pmsData,k,j){
 
 function promedioTmac(data) {
     let price = data
-    let tmac=[]
-    let ptmac=[]
+    let tmac=[] //no se manda
+    let ptmac=[] //se manda
     for(let i=0;i<price.length-1;i++){
         let vI = price[i]
         let vF = price[i+1]
-        ptmac.push(((vF/vI)-1)*100)
+        tmac.push(((vF/vI)-1)*100)
     }
-    ptmac.forEach((e,i)=>{
-        tmac.push(((e/10)*price[i+1])+price[i+1])
+    tmac.forEach((e,i)=>{
+        ptmac.push(((e/10)*price[i+1])+price[i+1])
     })
-    console.log(ptmac)
-    console.log(tmac)
+    // ptmac.push(((0/10)*price[price.length])+price[price.length])
     let informacion = {
-        tmac,
-        errorMedio:errorMedio(price.slice(1,price.length),tmac),
-        errorRelativo:errorRelativo(errorMedio(price.slice(1,price.length),tmac),tmac.slice(-1)),
-        errorCuadratico:errorCuadratico(tmac),
+        ptmac,
+        errorMedio:errorMedio(price.slice(1,price.length),ptmac.slice(0,ptmac.length-1)),
+        errorRelativo:errorRelativo(errorMedio(price.slice(1,price.length),ptmac.slice(0,ptmac.length-1)),ptmac.slice(-1)),
+        errorCuadratico:errorCuadratico(ptmac),
     }
     return informacion
 }

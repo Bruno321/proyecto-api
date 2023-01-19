@@ -4,7 +4,7 @@ const tokenKey = 'debugKey'
 
 exports.login = (req,res,next) => {
     const {email,password} = req.body
-    if(email==="email@email.com" && password==="password"){
+    if(email==="a" && password==="a"){
         const token = jwt.sign(
             {
               "user":"user",

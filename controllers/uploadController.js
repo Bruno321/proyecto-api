@@ -2,8 +2,50 @@ const { uploadService } = require("../services");
 const fs = require('fs');
 const { Datos } = require("../models");
 const readline = require("readline")
+const stream = require("stream");
+const Excel = require('exceljs');
+var DBF = require('stream-dbf');
 exports.upload = async (req,res,next) => {
     try {
+        let jsonData = []
+        const jsonNames = [
+            "Mapa",
+            "CVE_ENT",
+            "NOM_ENT",
+            "NOM_ABR",
+            "CVE_MUN",
+            "NOM_MUN",
+            "CVE_LOC",
+            "NOM_LOC",
+            "Ambito",
+            "Latitud",
+            "Longitud",
+            "Lat_Decimal",
+            "Lon_Decimal",
+            "Altitud",
+            "CVE_Carta",
+            "Pob_Total",
+            "Pob_Masculina",
+            "Pob_Femenina",
+            "Total_Viviendas",
+        ]
+        const parseToInt = [
+            "Mapa",
+              "CVE_ENT",
+          "CVE_MUN",
+          "CVE_LOC",
+          "Altitud",
+          "Pob_Total"
+        ]
+        const parseToFloat = [
+            "Lat_Decimal",
+          "Lon_Decimal",
+        ]
+        console.log(req.files)
+        const FILE_NAME = req.files?.archivo.name
+        let lineasTotales = 0 //despues de cada parse
+        let datosSubidos = 0 //despues de cada query
+        let porcentaje = 0.0 // (subidos*100) / totales
         const subirArchivo = async (file) =>{
             let response = await uploadService.uploadFile(file);
             if (!response.ok) {
@@ -15,100 +57,207 @@ exports.upload = async (req,res,next) => {
         let resp = await subirArchivo(req.files?.archivo);
 
         //leer el archivo y subirlo en csv
+        const FILE_TYPE = resp.split(".")[1]
         const readStream = fs.createReadStream(resp, 'utf-8');
-        let rl = readline.createInterface({input: readStream})
-        let jsonData = []
-        rl.on('line', (line) => {
-            let data = line
-            let splitedUsefullData = data.split(',')
-            // console.log(splitedUsefullData)
-            jsonData.push(parseJson(splitedUsefullData))
-        });
-        rl.on('error', (error) => console.log(error.message));
-        rl.on('close', async () => {
-            console.log('Data parsing completed');
+        if(FILE_TYPE==="dbf"){
+            let parser = new DBF(resp);
+            let stream = parser.stream;
+            stream.on('data', function(record){
+                // console.log(record.MAPA)
+                let ind = 0
+                let item = {}
+                for(let key in record){
+                    if(key!=="@sequenceNumber"){
+                        if(key!=="@deleted"){
+                            if(key!=="ESTATUS"){
+                                item[jsonNames[ind]] = record[key]
+                                ind++
+                            }
+                        }
+                    }
+                    
+                }
+                for(let key in item){ 
+                    if(parseToInt.includes(key)){
+                        item[key] = parseInt(item[key]) 
+                    }
+                    else if(parseToFloat.includes(key)){
+                        item[key] = parseFloat(item[key])
+                    }
+                }
+                lineasTotales++
+                jsonData.push(item)
+            });
+            stream.on('end',async function(){
+                    let dataQuery = []
+                    jsonData.forEach((e)=>{
+                        dataQuery.push(Datos.create(e))
+                        datosSubidos++
+                    })
+                    
+                    await Promise.all(dataQuery)
+                    porcentaje = (datosSubidos*100) / lineasTotales
+                    
+                    return res.status(200).json({
+                        porcentaje,
+                        datosSubidos,
+                        lineasTotales,
+                        FILE_NAME
+                    });
+            });
 
-            jsonData.forEach(e=>{
-                e.Mapa = parseInt(e.Mapa.replaceAll(`"`,""))
-                e.CVE_ENT =  parseInt(e.CVE_ENT.replaceAll(`"`,""))
-                e.NOM_ENT = e.NOM_ENT.replaceAll(`"`,"")
-                e.NOM_ABR = e.NOM_ABR.replaceAll(`"`,"")
-                e.CVE_MUN = parseInt(e.CVE_MUN.replaceAll(`"`,""))
-                e.NOM_MUN = e.NOM_MUN.replaceAll(`"`,"")
-                e.CVE_LOC = parseInt(e.CVE_LOC.replaceAll(`"`,""))
-                e.NOM_LOC = e.NOM_LOC.replaceAll(`"`,"")
-                e.Ambito = e.Ambito.replaceAll(`"`,"")
-                e.Latitud = e.Latitud.replaceAll(`"`,"")
-                e.Longitud = e.Longitud.replaceAll(`"`,"")
-                e.Lat_Decimal = parseFloat(e.Lat_Decimal.replaceAll(`"`,"")) 
-                e.Lon_Decimal = parseFloat(e.Lon_Decimal.replaceAll(`"`,"")) 
-                e.Altitud = parseInt(e.Altitud.replaceAll(`"`,"")) 
-                e.CVE_Carta = e.CVE_Carta.replaceAll(`"`,"")
-                e.Pob_Total = parseInt(e.Pob_Total.replaceAll(`"`,"")) 
-                e.Pob_Masculina = e.Pob_Masculina.replaceAll(`"`,"")
-                e.Pob_Femenina = e.Pob_Femenina.replaceAll(`"`,"")
-                e.Total_Viviendas = e.Total_Viviendas.replaceAll(`"`,"")
-            })
+        }else if(FILE_TYPE==="xlsx"){
+            var workbook = new Excel.Workbook(); 
+            workbook.xlsx.readFile(resp)
+                .then(function() {
+                    var worksheet = workbook.getWorksheet(1);
+                    worksheet.eachRow({ includeEmpty: true }, async function(row, rowNumber) {
+                    if(rowNumber!==1){
+                        lineasTotales++
+                        let cleanedData = []
+                        row.values.forEach(e=>{
+                            if(e!==undefined){
+                                cleanedData.push(e)
+                            }
+                        })
 
-            jsonData.shift()
-
-            try {
+                        let item = {}
+                        cleanedData.forEach((e,i)=>{
+                            item[jsonNames[i]] = e
+                                
+                        })
+                        jsonData.push(item)
+                    }
+                    });
+                })
+                .then(async ()=>{
+                    let dataQuery = []
+                    jsonData.forEach((e)=>{
+                        dataQuery.push(Datos.create(e))
+                        datosSubidos++
+                    })
+                    
+                    await Promise.all(dataQuery)
+                    porcentaje = (datosSubidos*100) / lineasTotales
+                    
+                    return res.status(200).json({
+                        porcentaje,
+                        datosSubidos,
+                        lineasTotales,
+                        FILE_NAME
+                    });
+                    
+                });
+                
+        }else{
+            
+            let rl = readline.createInterface({input: readStream})
+    
+            rl.on('line', (line) => {
+                if(FILE_TYPE==="txt"){
+                    let splitedData = line.split(`\t`)
+                    let cleanedData = []
+                    splitedData.forEach(e=>{
+                        if(e!==`""`){
+                            cleanedData.push(e)
+                        }
+                    })
+                    let item = {}
+                    cleanedData.forEach((e,i)=>{
+                        item[jsonNames[i]] = e
+                    })
+                    for(let key in item){ 
+                        item[key] = item[key].replaceAll(`"`,"")
+                        if(parseToInt.includes(key)){
+                            item[key] = parseInt(item[key]) 
+                        }
+                        else if(parseToFloat.includes(key)){
+                            item[key] = parseFloat(item[key])
+                        }
+                    }
+                    lineasTotales++
+                    jsonData.push(item)
+                }
+                if(FILE_TYPE==="csv"){
+                    let splitedData = line.split(",")
+                    let cleanedData = []
+                    splitedData.forEach(e=>{
+                        if(e!==``){
+                            cleanedData.push(e)
+                        }
+                    })
+                    let item = {}
+                    cleanedData.forEach((e,i)=>{
+                        item[jsonNames[i]] = e
+                    })
+                    for(let key in item){ 
+                        item[key] = item[key].replaceAll(`"`,"")
+                        if(parseToInt.includes(key)){
+                            item[key] = parseInt(item[key])
+                        }
+                        else if(parseToFloat.includes(key)){
+                            item[key] = parseFloat(item[key])
+                        }
+                    }
+                    lineasTotales++
+                    jsonData.push(item)
+                }else if(FILE_TYPE==="kml"){
+                    let cleanedData = removeAngleBracketElements(line)
+                    cleanedData.shift()
+                    cleanedData.splice(-1)
+                    let item = {}
+                    cleanedData.forEach((e,i)=>{
+                        item[jsonNames[i]] = e
+                    })
+                    for(let key in item){ 
+                        if(parseToInt.includes(key)){
+                            item[key] = parseInt(item[key]) 
+                        }
+                        else if(parseToFloat.includes(key)){
+                            item[key] = parseFloat(item[key])
+                        }
+                    }
+                    lineasTotales++
+                    jsonData.push(item)
+                }
+            });
+            rl.on('error', (error) => console.log(error.message));
+            rl.on('close', async () => {
+                console.log('Data parsing completed');
+                if(FILE_TYPE!=="kml"){
+                    jsonData.shift()
+                }else{
+                    jsonData.shift()
+                    jsonData.splice(-1)
+                }
+                if(FILE_TYPE==="txt"){
+                    lineasTotales = lineasTotales - 1
+                }
+                if(FILE_TYPE==="kml"){
+                    lineasTotales = lineasTotales - 2
+                }
+                if(FILE_TYPE==="csv"){
+                    lineasTotales = lineasTotales - 1
+                }
                 let dataQuery = []
                 jsonData.forEach((e)=>{
                     dataQuery.push(Datos.create(e))
+                    datosSubidos++
                 })
-        
+                    
                 await Promise.all(dataQuery)
-                console.log("querys finalizadas correctamente")
+                porcentaje = (datosSubidos*100) / lineasTotales
+                    
                 return res.status(200).json({
-                    ok: true,
-                    message: "archivo cargado"
+                    porcentaje,
+                    datosSubidos,
+                    lineasTotales,
+                    FILE_NAME
                 });
-            }catch(e){
-                console.log(e)
-                return res.status(500).json({
-                    message: "error"
-                });
-            }
-            
-        })
-        // Read and display the file data on console
-        // let fileData = ""
-        // reader.on('data', function (chunk) {
-        //     fileData = chunk.toString()
                 
-        // });
-
-        // reader.on('end', () => {
-        //     console.log(fileData)
-        // });
-
-        // let splitedData = fileData.split('HABITADAS')
-        // let usefullData = splitedData[1]
-        // let splitedUsefullData = usefullData.split(',')
-        // //aun no se pierde el ultimo splitedUsefullData
-        // times = Math.round(splitedUsefullData.length/19)
-        // let ordererData = []
-        // for(let i=0;i<times;i++){
-        //     ordererData.push(splitedUsefullData.splice(0,19))
-        // }
-        // for(let i=1;i<ordererData.length;i++){
-        //     ordererData[i][0] = ordererData[i][0].replace(/[\r\n]/gm, ',').split(',')
-        // }
-        // for(let i=1;i<ordererData.length;i++){
-        //     ordererData[i-1].push(ordererData[i][0][0])
-        //     ordererData[i][0] = ordererData[i][0].slice(-1)
-        // }
-        // let parsedData = []
-        // ordererData.forEach(e=>{
-        //     parsedData.push(parseJson(e))
-        // })
-        // parsedData[parsedData.length-1].Total_Viviendas = splitedUsefullData[0].replace(/[\r\n]/gm, ',').split(',')[0]
-        // console.log(parsedData)
-        
-        
-        
-        
+                
+            })
+        }
 
     } catch(e){
         console.log(e)
@@ -118,28 +267,26 @@ exports.upload = async (req,res,next) => {
     } 
 }
 
-function parseJson(array){
-    parsed = {
-        Mapa:array[0],
-        CVE_ENT:array[2],
-        NOM_ENT:array[3],
-        NOM_ABR:array[4],
-        CVE_MUN:array[5],
-        NOM_MUN:array[6],
-        CVE_LOC:array[7],
-        NOM_LOC:array[8],
-        Ambito:array[9],
-        Latitud:array[10],
-        Longitud:array[11],
-        Lat_Decimal:array[12],
-        Lon_Decimal:array[13],
-        Altitud:array[14],
-        CVE_Carta:array[15],
-        Pob_Total:array[16],
-        Pob_Masculina:array[17],
-        Pob_Femenina:array[18],
-        Total_Viviendas:array[19],
-    }
-    return parsed
-}
 
+function removeAngleBracketElements(str) {
+    let result = [];
+    let currentWord = "";
+    let insideBrackets = false;
+    for (let i = 0; i < str.length; i++) {
+      if (str[i] === "<") {
+        insideBrackets = true;
+        if (currentWord) {
+          result.push(currentWord);
+          currentWord = "";
+        }
+      } else if (str[i] === ">") {
+        insideBrackets = false;
+      } else if (!insideBrackets) {
+        currentWord += str[i];
+      }
+    }
+    if (currentWord) {
+      result.push(currentWord);
+    }
+    return result;
+}

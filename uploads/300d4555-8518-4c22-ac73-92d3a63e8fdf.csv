@@ -1,0 +1,12 @@
+﻿MAPA,Estatus,CVE_ENT,NOM_ENT,NOM_ABR,CVE_MUN,NOM_MUN,CVE_LOC,NOM_LOC,AMBITO,LATITUD,LONGITUD,LAT_DECIMAL,LON_DECIMAL,ALTITUD,CVE_CARTA,POB_TOTAL,POB_MASCULINA,POB_FEMENINA,TOTAL DE VIVIENDAS HABITADAS
+10010001,,1,Aguascalientes,Ags.,1,Aguascalientes,1,Aguascalientes,U,"21Â°52Â´47.362N""","102Â°17Â´45.768W""",21.879822,-102.296046,1878,F13D19,863893,419168,444725,246259
+10010094,,1,Aguascalientes,Ags.,1,Aguascalientes,94,Granja Adelita,R,"21Â°52Â´18.749N""","102Â°22Â´24.710W""",21.871874,-102.37353,1901,F13D18,5,*,*,2
+10010096,,1,Aguascalientes,Ags.,1,Aguascalientes,96,Agua Azul,R,"21Â°53Â´01.522N""","102Â°21Â´25.639W""",21.883756,-102.357122,1861,F13D18,41,24,17,12
+10010100,,1,Aguascalientes,Ags.,1,Aguascalientes,100,Rancho Alegre,R,"21Â°51Â´16.556N""","102Â°22Â´21.884W""",21.854599,-102.372745,1879,F13D18,0,0,0,0
+10010102,,1,Aguascalientes,Ags.,1,Aguascalientes,102,Los Arbolitos [Rancho],R,"21Â°46Â´48.650N""","102Â°21Â´26.261W""",21.78018,-102.357295,1861,F13D18,8,*,*,2
+10010104,,1,Aguascalientes,Ags.,1,Aguascalientes,104,Ardillas de Abajo (Las Ardillas),R,"21Â°56Â´42.243N""","102Â°11Â´30.914W""",21.945067,-102.19192,1994,F13D19,1,*,*,1
+10010106,,1,Aguascalientes,Ags.,1,Aguascalientes,106,Arellano,R,"21Â°48Â´06.384N""","102Â°16Â´26.238W""",21.801773,-102.273954,1891,F13D19,1169,613,556,281
+10010112,,1,Aguascalientes,Ags.,1,Aguascalientes,112,BajÃ­o los VÃ¡zquez,R,"21Â°44Â´50.978N""","102Â°07Â´29.341W""",21.747494,-102.124816,1971,F13D29,41,20,21,9
+10010113,,1,Aguascalientes,Ags.,1,Aguascalientes,113,BajÃ­o de Montoro,R,"21Â°45Â´28.377N""","102Â°17Â´24.472W""",21.757883,-102.290131,1871,F13D19,0,0,0,0
+10010120,,1,Aguascalientes,Ags.,1,Aguascalientes,120,Buenavista de PeÃ±uelas,R,"21Â°43Â´08.930N""","102Â°17Â´35.503W""",21.719147,-102.293195,1871,F13D29,1054,542,512,255
+10010121,,1,Aguascalientes,Ags.,1,Aguascalientes,121,Cabecita 3 MarÃ­as (Rancho Nuevo),R,"21Â°46Â´28.857N""","102Â°24Â´46.772W""",21.774682,-102.412992,1905,F13D18,192,92,100,47

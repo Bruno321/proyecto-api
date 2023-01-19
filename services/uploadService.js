@@ -11,13 +11,11 @@ const uploadFile = async (file) => {
         };
     }
 
-    // Validar extension
     const fileNameSegments = file.name.split('.'); // archivo.ejemplo.ext
     const fileExtension = fileNameSegments[fileNameSegments.length - 1]; // .ext
 
     // Generar el nombre del archivo
     const filename = `${uuidv4()}.${fileExtension}`;
-    // Path para guardar a imagen
     const path = `uploads/${filename}`;
 
     try {

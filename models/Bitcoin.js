@@ -2,8 +2,8 @@ const Sequelize = require('sequelize')
 const { db } = require('../config/')
 
 const Bitcoin = db.define('bitcoin',{
-    date:Sequelize.DATEONLY,
-    price:Sequelize.INTEGER
+    date:Sequelize.STRING,
+    price:Sequelize.DOUBLE
 })
 
 
